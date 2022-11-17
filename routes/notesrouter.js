@@ -1,6 +1,8 @@
 const express = require("express");
-const { postnotes, getnotes } = require("../Controller/notes");
-const notesschema = require("../Model/notesSchema");
+const { login, signin } = require("../Controller/login");
+const { postnotes, getnotes, deletenotes } = require("../Controller/notes");
+const authentication = require("../middleware/auth");
+const authschema = require("../Model/authschema");
 const app = express();
 
 const router = express.Router();
@@ -55,16 +57,23 @@ router.get("/", (req, res) => {
  *       500:
  *         description: Some server error
  */
+router.post("/signin", async (req, res) => {
+  signin(req, res);
+});
 
-router.post("/postnotes", async (req, res) => {
+router.post("/login", async (req, res) => {
+  login(req, res);
+});
+
+router.post("/postnotes", authentication, async (req, res) => {
   postnotes(req, res);
 });
 
-router.get("/getnotes", async (req, res) => {
+router.get("/getnotes", authentication, async (req, res) => {
   getnotes(req, res);
 });
 
-router.delete("/getnotes/:id", async (req, res) => {
+router.delete("/deletenotes/:id", authentication, async (req, res) => {
   deletenotes(req, res);
 });
 

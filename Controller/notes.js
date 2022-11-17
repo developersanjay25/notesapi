@@ -1,4 +1,5 @@
 const notesschema = require("../Model/notesSchema");
+const multer = require("multer");
 
 // /**
 //  * @swagger
@@ -62,30 +63,58 @@ const notesschema = require("../Model/notesSchema");
  *         description: Some server error
  */
 
+const storage = multer.diskStorage({
+  destination: "uploads",
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+});
+
+const uploads = multer({ storage: storage }).fields([
+  { name: "images", maxCount: 2 },
+]);
+
 const postnotes = async (req, res) => {
-  const { title, content, images } = req.body;
+  const { title, content } = req.body;
 
-  const newone = await new notesschema({
-    title: title,
-    content: content,
-    images: images,
-  });
+  try {
+    uploads(req, res, async (err) => {
+      if (err) return res.send(err);
 
-  console.log(title);
-  newone.save();
-  res.json(newone);
+      const images = [];
+
+      req.files["images"]?.map((item) => {
+        images.push(item.path);
+      });
+
+      const newone = await new notesschema({
+        title: title,
+        content: content,
+        images: images,
+        user: req.user,
+      });
+
+      newone.save();
+      return res.json(newone);
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const getnotes = async (req, res) => {
-  const allnotes = await notesschema.find();
-  console.log(allnotes);
+  const allnotes = await notesschema.find({ user: req.user });
   res.json(allnotes);
 };
 
 const deletenotes = async (req, res) => {
   const { id } = req.params;
-  console.log(req);
-  const res = await notesschema.deleteOne({ id });
+  const response = await notesschema.deleteOne({ _id: id });
+
+  if (response.acknowledged) {
+    res.send({ message: "success" });
+  }
+  res.status(500).send({ message: "error", reason: response });
 };
 
 module.exports = { postnotes, getnotes, deletenotes };
