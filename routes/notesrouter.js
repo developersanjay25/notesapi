@@ -1,6 +1,11 @@
 const express = require("express");
 const { login, signin } = require("../Controller/login");
-const { postnotes, getnotes, deletenotes } = require("../Controller/notes");
+const {
+  postnotes,
+  getnotes,
+  deletenotes,
+  editnotes,
+} = require("../Controller/notes");
 const authentication = require("../middleware/auth");
 const authschema = require("../Model/authschema");
 const app = express();
@@ -71,6 +76,10 @@ router.post("/postnotes", authentication, async (req, res) => {
 
 router.get("/getnotes", authentication, async (req, res) => {
   getnotes(req, res);
+});
+
+router.patch("/editnotes/:id", authentication, async (req, res) => {
+  editnotes(req, res);
 });
 
 router.delete("/deletenotes/:id", authentication, async (req, res) => {

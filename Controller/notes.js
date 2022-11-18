@@ -75,8 +75,6 @@ const uploads = multer({ storage: storage }).fields([
 ]);
 
 const postnotes = async (req, res) => {
-  const { title, content } = req.body;
-
   try {
     uploads(req, res, async (err) => {
       if (err) return res.send(err);
@@ -88,8 +86,8 @@ const postnotes = async (req, res) => {
       });
 
       const newone = await new notesschema({
-        title: title,
-        content: content,
+        title: req.body.title,
+        content: req.body.content,
         images: images,
         user: req.user,
       });
@@ -117,4 +115,36 @@ const deletenotes = async (req, res) => {
   res.status(500).send({ message: "error", reason: response });
 };
 
-module.exports = { postnotes, getnotes, deletenotes };
+const editnotes = async (req, res) => {
+  const { id } = req.params;
+  const findnotes = await notesschema.findOne({ _id: id });
+
+  if (!findnotes)
+    return res
+      .send(404)
+      .status({ status: "error", message: "Account not found" });
+  uploads(req, res, async (err) => {
+    if (err) return res.send({ status: err, message: err });
+
+    const images = [];
+
+    req.files?.images?.map((item) => {
+      images.push(item.path);
+    });
+
+    const update = await notesschema.updateOne(
+      { _id: id },
+      {
+        $set: { title: req.body.title },
+        $push: { images: { $each: images } },
+      }
+    );
+
+    if (update.acknowledged) {
+      return res.send({ status: "success", message: "success" });
+    }
+    return res.status(500).send({ status: "error", message: update });
+  });
+};
+
+module.exports = { postnotes, getnotes, deletenotes, editnotes };
