@@ -1,5 +1,6 @@
 const notesschema = require("../Model/notesSchema");
 const multer = require("multer");
+const imagesschema = require("../Model/imagesschema");
 
 // /**
 //  * @swagger
@@ -81,18 +82,31 @@ const postnotes = async (req, res) => {
 
       const images = [];
 
-      req.files["images"]?.map((item) => {
-        images.push(item.path);
-      });
-
-      const newone = await new notesschema({
+      const newone = new notesschema({
         title: req.body.title,
         content: req.body.content,
         images: images,
+        image1: images,
         user: req.user,
       });
 
-      newone.save();
+      req.files["images"]?.map((item) => {
+        newone.images.push({ link: item.path });
+      });
+
+      const imgschema = new imagesschema({
+        images: [],
+      });
+
+      req.files["images"]?.map((item) => {
+        imgschema.images.push({ link: item.path });
+      });
+
+      await imgschema.save();
+
+      newone.image1 = imgschema._id;
+
+      await newone.save();
       return res.json(newone);
     });
   } catch (error) {
@@ -101,8 +115,10 @@ const postnotes = async (req, res) => {
 };
 
 const getnotes = async (req, res) => {
-  const allnotes = await notesschema.find({ user: req.user });
-  res.json(allnotes);
+  const allnotes = await notesschema
+    .find({ user: req.user })
+    .populate("image1");
+  res.send(allnotes);
 };
 
 const deletenotes = async (req, res) => {

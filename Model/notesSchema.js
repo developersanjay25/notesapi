@@ -6,7 +6,7 @@ const imageschema = mongoose.model("images", images);
 const notesschema = mongoose.Schema({
   title: { type: String },
   content: { type: String },
-  // images: { type: mongoose.Schema.type.objectId, ref: "Images" },
+  image1: { type: mongoose.Schema.Types.ObjectId, ref: "Images" },
   images: [images],
   user: { type: String, require: true },
 });
