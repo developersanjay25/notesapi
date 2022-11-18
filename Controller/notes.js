@@ -2,30 +2,30 @@ const notesschema = require("../Model/notesSchema");
 const multer = require("multer");
 const imagesschema = require("../Model/imagesschema");
 
-// /**
-//  * @swagger
-//  * components:
-//  *   schemas:
-//  *     Book:
-//  *       type: object
-//  *       required:
-//  *         - title
-//  *         - author
-//  *       properties:
-//  *         id:
-//  *           type: string
-//  *           description: The auto-generated id of the book
-//  *         title:
-//  *           type: string
-//  *           description: The book title
-//  *         author:
-//  *           type: string
-//  *           description: The book author
-//  *       example:
-//  *         id: d5fE_asz
-//  *         title: The New Turing Omnibus
-//  *         author: Alexander K. Dewdney
-//  */
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Book:
+ *       type: object
+ *       required:
+ *         - title
+ *         - author
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: The auto-generated id of the book
+ *         title:
+ *           type: string
+ *           description: The book title
+ *         author:
+ *           type: string
+ *           description: The book author
+ *       example:
+ *         id: d5fE_asz
+ *         title: The New Turing Omnibus
+ *         author: Alexander K. Dewdney
+ */
 
 /**
  * @swagger
@@ -75,6 +75,7 @@ const uploads = multer({ storage: storage }).fields([
   { name: "images", maxCount: 2 },
 ]);
 
+// Post Notes
 const postnotes = async (req, res) => {
   try {
     uploads(req, res, async (err) => {
@@ -114,6 +115,7 @@ const postnotes = async (req, res) => {
   }
 };
 
+// Get notes
 const getnotes = async (req, res) => {
   const allnotes = await notesschema
     .find({ user: req.user })
@@ -121,16 +123,21 @@ const getnotes = async (req, res) => {
   res.send(allnotes);
 };
 
+// Delete notes
 const deletenotes = async (req, res) => {
   const { id } = req.params;
+
+  const data = await notesschema.findById(id);
+  const resp = await imagesschema.deleteOne({ _id: data.image1 });
   const response = await notesschema.deleteOne({ _id: id });
 
-  if (response.acknowledged) {
-    res.send({ message: "success" });
+  if (response.acknowledged && resp.acknowledged) {
+    return res.send({ message: "success" });
   }
-  res.status(500).send({ message: "error", reason: response });
+  return res.status(500).send({ message: "error", reason: response });
 };
 
+// Edit Notes
 const editnotes = async (req, res) => {
   const { id } = req.params;
   const findnotes = await notesschema.findOne({ _id: id });
@@ -145,22 +152,43 @@ const editnotes = async (req, res) => {
     const images = [];
 
     req.files?.images?.map((item) => {
-      images.push(item.path);
+      images.push({ link: item.path });
     });
+    console.log(images);
+    let update;
+    try {
+      update = await imagesschema.updateOne(
+        { _id: findnotes?.image1 },
+        { $push: { images: { $each: images } } }
+      );
 
-    const update = await notesschema.updateOne(
-      { _id: id },
-      {
-        $set: { title: req.body.title },
-        $push: { images: { $each: images } },
+      if (update?.acknowledged) {
+        return res.send({ status: "success", message: "success" });
       }
-    );
-
-    if (update.acknowledged) {
-      return res.send({ status: "success", message: "success" });
+    } catch (error) {
+      res.send(error);
     }
     return res.status(500).send({ status: "error", message: update });
   });
 };
 
-module.exports = { postnotes, getnotes, deletenotes, editnotes };
+// Delete image
+const deleteimages = async (req, res) => {
+  const { id, imgid } = req.params;
+  try {
+    const find = await imagesschema.updateOne(
+      { _id: id },
+      { $pull: { images: { _id: imgid } } },
+      { new: true }
+    );
+
+    if (find.modifiedCount > 0) {
+      return res.send({ message: "Modified successfully" });
+    }
+    return res.status(500).send({ message: "error" });
+  } catch (err) {
+    return res.send(err);
+  }
+};
+
+module.exports = { postnotes, getnotes, deletenotes, editnotes, deleteimages };

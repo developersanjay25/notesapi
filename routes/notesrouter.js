@@ -5,6 +5,7 @@ const {
   getnotes,
   deletenotes,
   editnotes,
+  deleteimages,
 } = require("../Controller/notes");
 const authentication = require("../middleware/auth");
 const authschema = require("../Model/authschema");
@@ -84,6 +85,10 @@ router.patch("/editnotes/:id", authentication, async (req, res) => {
 
 router.delete("/deletenotes/:id", authentication, async (req, res) => {
   deletenotes(req, res);
+});
+
+router.delete("/deleteimages/:id/:imgid", authentication, async (req, res) => {
+  deleteimages(req, res);
 });
 
 module.exports = router;
