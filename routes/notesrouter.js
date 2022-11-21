@@ -8,8 +8,8 @@ const {
   deleteimages,
 } = require("../Controller/notes");
 const authentication = require("../middleware/auth");
-const authschema = require("../Model/authschema");
-const app = express();
+const uploads = require("../middleware/multercomponent");
+const usereditordeloermission = require("../middleware/usereditordelpermission");
 
 const router = express.Router();
 
@@ -71,24 +71,44 @@ router.post("/login", async (req, res) => {
   login(req, res);
 });
 
-router.post("/postnotes", authentication, async (req, res) => {
-  postnotes(req, res);
-});
+router.post(
+  "/postnotes",
+  uploads.fields([{ name: "images", maxCount: 2 }]),
+  authentication,
+  async (req, res) => {
+    postnotes(req, res);
+  }
+);
 
 router.get("/getnotes", authentication, async (req, res) => {
   getnotes(req, res);
 });
 
-router.patch("/editnotes/:id", authentication, async (req, res) => {
-  editnotes(req, res);
-});
+router.patch(
+  "/editnotes/:id",
+  uploads.fields([{ name: "images", maxCount: 2 }]),
+  authentication,
+  async (req, res) => {
+    editnotes(req, res);
+  }
+);
 
-router.delete("/deletenotes/:id", authentication, async (req, res) => {
-  deletenotes(req, res);
-});
+router.delete(
+  "/deletenotes/:id",
+  authentication,
+  usereditordeloermission,
+  async (req, res) => {
+    deletenotes(req, res);
+  }
+);
 
-router.delete("/deleteimages/:id/:imgid", authentication, async (req, res) => {
-  deleteimages(req, res);
-});
+router.delete(
+  "/deleteimages/:id/:imgid",
+  authentication,
+  usereditordeloermission,
+  async (req, res) => {
+    deleteimages(req, res);
+  }
+);
 
 module.exports = router;

@@ -1,31 +1,32 @@
 const notesschema = require("../Model/notesSchema");
 const multer = require("multer");
 const imagesschema = require("../Model/imagesschema");
+const uploads = require("../middleware/multercomponent");
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Book:
- *       type: object
- *       required:
- *         - title
- *         - author
- *       properties:
- *         id:
- *           type: string
- *           description: The auto-generated id of the book
- *         title:
- *           type: string
- *           description: The book title
- *         author:
- *           type: string
- *           description: The book author
- *       example:
- *         id: d5fE_asz
- *         title: The New Turing Omnibus
- *         author: Alexander K. Dewdney
- */
+// /**
+//  * @swagger
+//  * components:
+//  *   schemas:
+//  *     Book:
+//  *       type: object
+//  *       required:
+//  *         - title
+//  *         - author
+//  *       properties:
+//  *         id:
+//  *           type: string
+//  *           description: The auto-generated id of the book
+//  *         title:
+//  *           type: string
+//  *           description: The book title
+//  *         author:
+//  *           type: string
+//  *           description: The book author
+//  *       example:
+//  *         id: d5fE_asz
+//  *         title: The New Turing Omnibus
+//  *         author: Alexander K. Dewdney
+//  */
 
 /**
  * @swagger
@@ -64,52 +65,40 @@ const imagesschema = require("../Model/imagesschema");
  *         description: Some server error
  */
 
-const storage = multer.diskStorage({
-  destination: "uploads",
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  },
-});
-
-const uploads = multer({ storage: storage }).fields([
-  { name: "images", maxCount: 2 },
-]);
-
 // Post Notes
 const postnotes = async (req, res) => {
   try {
-    uploads(req, res, async (err) => {
-      if (err) return res.send(err);
+    const images = [];
 
-      const images = [];
-
-      const newone = new notesschema({
-        title: req.body.title,
-        content: req.body.content,
-        images: images,
-        image1: images,
-        user: req.user,
-      });
-
-      req.files["images"]?.map((item) => {
-        newone.images.push({ link: item.path });
-      });
-
-      const imgschema = new imagesschema({
-        images: [],
-      });
-
-      req.files["images"]?.map((item) => {
-        imgschema.images.push({ link: item.path });
-      });
-
-      await imgschema.save();
-
-      newone.image1 = imgschema._id;
-
-      await newone.save();
-      return res.json(newone);
+    const newone = new notesschema({
+      title: req.body.title,
+      content: req.body.content,
+      images: images,
+      image1: images,
+      user: req.user,
     });
+    const domainlink = `${req.protocol}://${req.get("host")}`;
+
+    req.files["images"]?.map((item) => {
+      newone.images.push({ link: `${domainlink}/uploads/${item.filename}` });
+    });
+
+    const imgschema = new imagesschema({
+      images: [],
+    });
+
+    req.files["images"]?.map((item) => {
+      imgschema.images.push({
+        link: `${domainlink}/uploads/${item.filename}`,
+      });
+    });
+
+    await imgschema.save();
+
+    newone.image1 = imgschema._id;
+
+    await newone.save();
+    return res.json(newone);
   } catch (error) {
     console.log(error);
   }
@@ -140,36 +129,37 @@ const deletenotes = async (req, res) => {
 // Edit Notes
 const editnotes = async (req, res) => {
   const { id } = req.params;
-  const findnotes = await notesschema.findOne({ _id: id });
+  const findnotes = await notesschema.findById(id);
 
   if (!findnotes)
     return res
       .send(404)
       .status({ status: "error", message: "Account not found" });
-  uploads(req, res, async (err) => {
-    if (err) return res.send({ status: err, message: err });
 
-    const images = [];
+  const images = [];
 
-    req.files?.images?.map((item) => {
-      images.push({ link: item.path });
-    });
-    console.log(images);
-    let update;
-    try {
-      update = await imagesschema.updateOne(
-        { _id: findnotes?.image1 },
-        { $push: { images: { $each: images } } }
-      );
-
-      if (update?.acknowledged) {
-        return res.send({ status: "success", message: "success" });
-      }
-    } catch (error) {
-      res.send(error);
-    }
-    return res.status(500).send({ status: "error", message: update });
+  req.files?.images?.map((item) => {
+    images.push({ link: item.path });
   });
+  let update;
+  try {
+    update = await imagesschema.updateOne(
+      { _id: findnotes?.image1 },
+      {
+        $push: { images: { $each: images } },
+      }
+    );
+
+    await notesschema.updateOne({ _id: id }, { $set: req.body });
+
+    return res.send({
+      status: "success",
+      message: { update, findnotes, images, body: req.body },
+    });
+  } catch (error) {
+    res.send(error);
+  }
+  return res.status(500).send({ status: "error", message: update });
 };
 
 // Delete image
